@@ -1,0 +1,101 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+model Parent {
+  id        Int      @id @default(autoincrement())
+  name      String
+  phone     String
+  email     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  students Student[]
+}
+
+model Student {
+  id           Int      @id @default(autoincrement())
+  name         String
+  dob          DateTime
+  gender       Gender
+  currentGrade String
+  parentId     Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  parent        Parent              @relation(fields: [parentId], references: [id], onDelete: Restrict)
+  registrations ClassRegistration[]
+  subscriptions Subscription[]
+
+  @@index([parentId])
+}
+
+model Class {
+  id          Int       @id @default(autoincrement())
+  name        String
+  subject     String
+  dayOfWeek   DayOfWeek
+  timeSlot    String
+  teacherName String
+  maxStudents Int
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  registrations ClassRegistration[]
+}
+
+model Subscription {
+  id            Int      @id @default(autoincrement())
+  studentId     Int
+  packageName   String
+  startDate     DateTime
+  endDate       DateTime
+  totalSessions Int
+  usedSessions  Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  student           Student             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  registrationsUsed ClassRegistration[] @relation("RegistrationSubscription")
+
+  @@index([studentId])
+}
+
+model ClassRegistration {
+  id                 Int      @id @default(autoincrement())
+  classId            Int
+  studentId          Int
+  classDate          DateTime
+  subscriptionIdUsed Int?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  class            Class         @relation(fields: [classId], references: [id], onDelete: Cascade)
+  student          Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subscriptionUsed Subscription? @relation("RegistrationSubscription", fields: [subscriptionIdUsed], references: [id], onDelete: SetNull)
+
+  @@unique([classId, studentId])
+  @@index([studentId])
+  @@index([subscriptionIdUsed])
+}
