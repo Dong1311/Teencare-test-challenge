@@ -1,9 +1,18 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { Alert, Card, Space, Spin, Table, Typography } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
 import ParentForm from '@/components/ParentForm';
 import { api } from '@/lib/api';
 import { Parent } from '@/lib/types';
+
+const columns: ColumnsType<Parent> = [
+  { title: 'ID', dataIndex: 'id', key: 'id', width: 80 },
+  { title: 'Name', dataIndex: 'name', key: 'name' },
+  { title: 'Phone', dataIndex: 'phone', key: 'phone' },
+  { title: 'Email', dataIndex: 'email', key: 'email' },
+];
 
 export default function ParentsPage() {
   const [parents, setParents] = useState<Parent[]>([]);
@@ -27,44 +36,26 @@ export default function ParentsPage() {
   }, [loadParents]);
 
   return (
-    <section className="stack">
+    <Space direction="vertical" size={16} style={{ width: '100%' }}>
       <ParentForm onCreated={() => void loadParents()} />
 
-      <div className="card">
-        <h3>Parents List</h3>
-        {loading && <p>Loading...</p>}
-        {error && <p className="feedback error">{error}</p>}
+      <Card
+        bordered={false}
+        title={<Typography.Title level={4} style={{ margin: 0 }}>Parents List</Typography.Title>}
+      >
+        {loading && <Spin />}
+        {error && <Alert type="error" showIcon message={error} />}
 
         {!loading && !error && (
-          <table>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Phone</th>
-                <th>Email</th>
-              </tr>
-            </thead>
-            <tbody>
-              {parents.map((parent) => (
-                <tr key={parent.id}>
-                  <td>{parent.id}</td>
-                  <td>{parent.name}</td>
-                  <td>{parent.phone}</td>
-                  <td>{parent.email}</td>
-                </tr>
-              ))}
-              {parents.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="muted">
-                    No parents found
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+          <Table
+            rowKey="id"
+            columns={columns}
+            dataSource={parents}
+            pagination={false}
+            locale={{ emptyText: 'No parents found' }}
+          />
         )}
-      </div>
-    </section>
+      </Card>
+    </Space>
   );
 }

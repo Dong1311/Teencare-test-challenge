@@ -1,6 +1,7 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { Button, Card, Form, Input, InputNumber, Select } from 'antd';
 import { api } from '@/lib/api';
 import { Student, Subscription } from '@/lib/types';
 import FeedbackMessage from './FeedbackMessage';
@@ -10,54 +11,50 @@ interface SubscriptionFormProps {
   onCreated?: (subscription: Subscription) => void;
 }
 
+interface SubscriptionFormValues {
+  studentId: number;
+  packageName: string;
+  startDate: string;
+  endDate: string;
+  totalSessions: number;
+  usedSessions: number;
+}
+
 export default function SubscriptionForm({
   students,
   onCreated,
 }: SubscriptionFormProps) {
-  const [studentId, setStudentId] = useState<number | ''>('');
-  const [packageName, setPackageName] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [totalSessions, setTotalSessions] = useState(12);
-  const [usedSessions, setUsedSessions] = useState(0);
+  const [form] = Form.useForm<SubscriptionFormValues>();
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<{
     type: 'success' | 'error';
     text: string;
   } | null>(null);
 
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault();
+  const studentOptions = useMemo(
+    () =>
+      students.map((student) => ({
+        label: student.name,
+        value: student.id,
+      })),
+    [students],
+  );
 
-    if (!studentId) {
-      setFeedback({ type: 'error', text: 'Please choose a student' });
-      return;
-    }
-
+  async function handleSubmit(values: SubscriptionFormValues) {
     setLoading(true);
     setFeedback(null);
 
     try {
-      const subscription = await api.createSubscription({
-        studentId: Number(studentId),
-        packageName,
-        startDate,
-        endDate,
-        totalSessions,
-        usedSessions,
-      });
+      const subscription = await api.createSubscription(values);
 
       setFeedback({
         type: 'success',
         text: `Subscription #${subscription.id} created.`,
       });
 
-      setStudentId('');
-      setPackageName('');
-      setStartDate('');
-      setEndDate('');
-      setTotalSessions(12);
-      setUsedSessions(0);
+      form.resetFields();
+      form.setFieldValue('totalSessions', 12);
+      form.setFieldValue('usedSessions', 0);
       onCreated?.(subscription);
     } catch (error) {
       setFeedback({
@@ -73,82 +70,45 @@ export default function SubscriptionForm({
   }
 
   return (
-    <div className="card">
-      <h3>Create Subscription</h3>
-      <form onSubmit={handleSubmit} className="form">
-        <label>
-          Student
-          <select
-            value={studentId}
-            onChange={(e) => setStudentId(e.target.value ? Number(e.target.value) : '')}
-            required
-          >
-            <option value="">Select student</option>
-            {students.map((student) => (
-              <option key={student.id} value={student.id}>
-                {student.name}
-              </option>
-            ))}
-          </select>
-        </label>
+    <Card title="Create Subscription" bordered={false}>
+      <Form
+        form={form}
+        layout="vertical"
+        onFinish={handleSubmit}
+        initialValues={{ totalSessions: 12, usedSessions: 0 }}
+      >
+        <Form.Item label="Student" name="studentId" rules={[{ required: true }]}> 
+          <Select placeholder="Select student" options={studentOptions} />
+        </Form.Item>
 
-        <label>
-          Package Name
-          <input
-            value={packageName}
-            onChange={(e) => setPackageName(e.target.value)}
-            placeholder="12-session package"
-            required
-          />
-        </label>
+        <Form.Item label="Package Name" name="packageName" rules={[{ required: true }]}> 
+          <Input placeholder="12-session package" />
+        </Form.Item>
 
-        <label>
-          Start Date
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            required
-          />
-        </label>
+        <Form.Item label="Start Date" name="startDate" rules={[{ required: true }]}> 
+          <Input type="date" />
+        </Form.Item>
 
-        <label>
-          End Date
-          <input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            required
-          />
-        </label>
+        <Form.Item label="End Date" name="endDate" rules={[{ required: true }]}> 
+          <Input type="date" />
+        </Form.Item>
 
-        <label>
-          Total Sessions
-          <input
-            type="number"
-            min={1}
-            value={totalSessions}
-            onChange={(e) => setTotalSessions(Number(e.target.value))}
-            required
-          />
-        </label>
+        <Form.Item label="Total Sessions" name="totalSessions" rules={[{ required: true }]}> 
+          <InputNumber min={1} style={{ width: '100%' }} />
+        </Form.Item>
 
-        <label>
-          Used Sessions
-          <input
-            type="number"
-            min={0}
-            value={usedSessions}
-            onChange={(e) => setUsedSessions(Number(e.target.value))}
-          />
-        </label>
+        <Form.Item label="Used Sessions" name="usedSessions" rules={[{ required: true }]}> 
+          <InputNumber min={0} style={{ width: '100%' }} />
+        </Form.Item>
 
-        <button type="submit" disabled={loading}>
-          {loading ? 'Creating...' : 'Create Subscription'}
-        </button>
-      </form>
+        <Form.Item style={{ marginBottom: 0 }}>
+          <Button type="primary" htmlType="submit" loading={loading}>
+            Create Subscription
+          </Button>
+        </Form.Item>
+      </Form>
 
       <FeedbackMessage feedback={feedback} />
-    </div>
+    </Card>
   );
 }

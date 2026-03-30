@@ -1,6 +1,7 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { Button, Card, Form, Input, Select } from 'antd';
 import { api } from '@/lib/api';
 import { ClassItem, Student } from '@/lib/types';
 import FeedbackMessage from './FeedbackMessage';
@@ -11,35 +12,50 @@ interface RegisterStudentFormProps {
   onRegistered?: () => void;
 }
 
+interface RegisterFormValues {
+  studentId: number;
+  classId: number;
+  classDate: string;
+}
+
 export default function RegisterStudentForm({
   students,
   classes,
   onRegistered,
 }: RegisterStudentFormProps) {
-  const [studentId, setStudentId] = useState<number | ''>('');
-  const [classId, setClassId] = useState<number | ''>('');
-  const [classDate, setClassDate] = useState('');
+  const [form] = Form.useForm<RegisterFormValues>();
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<{
     type: 'success' | 'error';
     text: string;
   } | null>(null);
 
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault();
+  const studentOptions = useMemo(
+    () =>
+      students.map((student) => ({
+        label: student.name,
+        value: student.id,
+      })),
+    [students],
+  );
 
-    if (!studentId || !classId) {
-      setFeedback({ type: 'error', text: 'Please choose both student and class' });
-      return;
-    }
+  const classOptions = useMemo(
+    () =>
+      classes.map((item) => ({
+        label: `${item.name} - ${item.dayOfWeek} (${item.timeSlot})`,
+        value: item.id,
+      })),
+    [classes],
+  );
 
+  async function handleSubmit(values: RegisterFormValues) {
     setLoading(true);
     setFeedback(null);
 
     try {
-      const registration = await api.registerStudent(Number(classId), {
-        studentId: Number(studentId),
-        classDate,
+      const registration = await api.registerStudent(values.classId, {
+        studentId: values.studentId,
+        classDate: values.classDate,
       });
 
       setFeedback({
@@ -47,6 +63,7 @@ export default function RegisterStudentForm({
         text: `Registration #${registration.id} created successfully`,
       });
 
+      form.resetFields();
       onRegistered?.();
     } catch (error) {
       setFeedback({
@@ -59,57 +76,28 @@ export default function RegisterStudentForm({
   }
 
   return (
-    <div className="card">
-      <h3>Register Student to Class</h3>
-      <form className="form" onSubmit={handleSubmit}>
-        <label>
-          Student
-          <select
-            value={studentId}
-            onChange={(e) => setStudentId(e.target.value ? Number(e.target.value) : '')}
-            required
-          >
-            <option value="">Select student</option>
-            {students.map((student) => (
-              <option key={student.id} value={student.id}>
-                {student.name}
-              </option>
-            ))}
-          </select>
-        </label>
+    <Card title="Register Student to Class" bordered={false}>
+      <Form form={form} layout="vertical" onFinish={handleSubmit}>
+        <Form.Item label="Student" name="studentId" rules={[{ required: true }]}> 
+          <Select placeholder="Select student" options={studentOptions} />
+        </Form.Item>
 
-        <label>
-          Class
-          <select
-            value={classId}
-            onChange={(e) => setClassId(e.target.value ? Number(e.target.value) : '')}
-            required
-          >
-            <option value="">Select class</option>
-            {classes.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.name} - {item.dayOfWeek} ({item.timeSlot})
-              </option>
-            ))}
-          </select>
-        </label>
+        <Form.Item label="Class" name="classId" rules={[{ required: true }]}> 
+          <Select placeholder="Select class" options={classOptions} />
+        </Form.Item>
 
-        <label>
-          Class Date
-          <input
-            type="date"
-            value={classDate}
-            onChange={(e) => setClassDate(e.target.value)}
-            required
-          />
-        </label>
+        <Form.Item label="Class Date" name="classDate" rules={[{ required: true }]}> 
+          <Input type="date" />
+        </Form.Item>
 
-        <button type="submit" disabled={loading}>
-          {loading ? 'Registering...' : 'Register'}
-        </button>
-      </form>
+        <Form.Item style={{ marginBottom: 0 }}>
+          <Button type="primary" htmlType="submit" loading={loading}>
+            Register
+          </Button>
+        </Form.Item>
+      </Form>
 
       <FeedbackMessage feedback={feedback} />
-    </div>
+    </Card>
   );
 }

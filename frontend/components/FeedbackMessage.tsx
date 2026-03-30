@@ -1,5 +1,6 @@
 'use client';
 
+import { Alert } from 'antd';
 import { FeedbackState } from '@/lib/types';
 
 interface FeedbackMessageProps {
@@ -12,8 +13,11 @@ export default function FeedbackMessage({ feedback }: FeedbackMessageProps) {
   }
 
   return (
-    <p className={feedback.type === 'success' ? 'feedback success' : 'feedback error'}>
-      {feedback.text}
-    </p>
+    <Alert
+      showIcon
+      type={feedback.type}
+      message={feedback.text}
+      style={{ marginTop: 12 }}
+    />
   );
 }

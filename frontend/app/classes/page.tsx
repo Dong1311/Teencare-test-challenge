@@ -1,6 +1,20 @@
 'use client';
 
-import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import {
+  Alert,
+  Button,
+  Card,
+  Col,
+  Form,
+  Input,
+  InputNumber,
+  Row,
+  Select,
+  Space,
+  Spin,
+  Typography,
+} from 'antd';
 import RegisterStudentForm from '@/components/RegisterStudentForm';
 import WeeklyClassesTable from '@/components/WeeklyClassesTable';
 import FeedbackMessage from '@/components/FeedbackMessage';
@@ -17,22 +31,31 @@ const DAY_OPTIONS = [
   'SUNDAY',
 ];
 
+interface CreateClassValues {
+  name: string;
+  subject: string;
+  dayOfWeek: string;
+  timeSlot: string;
+  teacherName: string;
+  maxStudents: number;
+}
+
+interface CancelRegistrationValues {
+  registrationId: number;
+}
+
 export default function ClassesPage() {
+  const [createForm] = Form.useForm<CreateClassValues>();
+  const [cancelForm] = Form.useForm<CancelRegistrationValues>();
+
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [name, setName] = useState('');
-  const [subject, setSubject] = useState('');
-  const [dayOfWeek, setDayOfWeek] = useState('MONDAY');
-  const [timeSlot, setTimeSlot] = useState('09:00-10:30');
-  const [teacherName, setTeacherName] = useState('');
-  const [maxStudents, setMaxStudents] = useState(20);
   const [creatingClass, setCreatingClass] = useState(false);
   const [classFeedback, setClassFeedback] = useState<FeedbackState | null>(null);
 
-  const [registrationId, setRegistrationId] = useState<number | ''>('');
   const [cancelLoading, setCancelLoading] = useState(false);
   const [cancelFeedback, setCancelFeedback] = useState<FeedbackState | null>(null);
 
@@ -56,28 +79,19 @@ export default function ClassesPage() {
     void loadData();
   }, [loadData]);
 
-  async function handleCreateClass(event: FormEvent) {
-    event.preventDefault();
+  async function handleCreateClass(values: CreateClassValues) {
     setCreatingClass(true);
     setClassFeedback(null);
 
     try {
-      await api.createClass({
-        name,
-        subject,
-        dayOfWeek,
-        timeSlot,
-        teacherName,
-        maxStudents,
-      });
-
+      await api.createClass(values);
       setClassFeedback({ type: 'success', text: 'Class created successfully' });
-      setName('');
-      setSubject('');
-      setDayOfWeek('MONDAY');
-      setTimeSlot('09:00-10:30');
-      setTeacherName('');
-      setMaxStudents(20);
+      createForm.resetFields();
+      createForm.setFieldsValue({
+        dayOfWeek: 'MONDAY',
+        timeSlot: '09:00-10:30',
+        maxStudents: 20,
+      });
       await loadData();
     } catch (err) {
       setClassFeedback({
@@ -89,23 +103,17 @@ export default function ClassesPage() {
     }
   }
 
-  async function handleCancelRegistration(event: FormEvent) {
-    event.preventDefault();
-    if (!registrationId) {
-      setCancelFeedback({ type: 'error', text: 'Please enter registration ID' });
-      return;
-    }
-
+  async function handleCancelRegistration(values: CancelRegistrationValues) {
     setCancelLoading(true);
     setCancelFeedback(null);
 
     try {
-      const result = await api.cancelRegistration(Number(registrationId));
+      const result = await api.cancelRegistration(values.registrationId);
       setCancelFeedback({
         type: 'success',
         text: `Registration removed. Refunded sessions: ${result.refundedSessions}`,
       });
-      setRegistrationId('');
+      cancelForm.resetFields();
       await loadData();
     } catch (err) {
       setCancelFeedback({
@@ -118,114 +126,94 @@ export default function ClassesPage() {
   }
 
   return (
-    <section className="stack">
-      <div className="grid">
-        <div className="card">
-          <h3>Create Class</h3>
-          <form className="form" onSubmit={handleCreateClass}>
-            <label>
-              Class Name
-              <input value={name} onChange={(e) => setName(e.target.value)} required />
-            </label>
+    <Space direction="vertical" size={16} style={{ width: '100%' }}>
+      <Row gutter={[16, 16]}>
+        <Col xs={24} lg={12}>
+          <Card title="Create Class" bordered={false}>
+            <Form
+              form={createForm}
+              layout="vertical"
+              onFinish={handleCreateClass}
+              initialValues={{
+                dayOfWeek: 'MONDAY',
+                timeSlot: '09:00-10:30',
+                maxStudents: 20,
+              }}
+            >
+              <Form.Item label="Class Name" name="name" rules={[{ required: true }]}> 
+                <Input placeholder="Math Monday" />
+              </Form.Item>
 
-            <label>
-              Subject
-              <input
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                required
-              />
-            </label>
+              <Form.Item label="Subject" name="subject" rules={[{ required: true }]}> 
+                <Input placeholder="Math" />
+              </Form.Item>
 
-            <label>
-              Day of Week
-              <select
-                value={dayOfWeek}
-                onChange={(e) => setDayOfWeek(e.target.value)}
-              >
-                {DAY_OPTIONS.map((day) => (
-                  <option key={day} value={day}>
-                    {day}
-                  </option>
-                ))}
-              </select>
-            </label>
+              <Form.Item label="Day of Week" name="dayOfWeek" rules={[{ required: true }]}> 
+                <Select
+                  options={DAY_OPTIONS.map((day) => ({ label: day, value: day }))}
+                />
+              </Form.Item>
 
-            <label>
-              Time Slot
-              <input
-                value={timeSlot}
-                onChange={(e) => setTimeSlot(e.target.value)}
-                placeholder="09:00-10:30"
-                required
-              />
-            </label>
+              <Form.Item label="Time Slot" name="timeSlot" rules={[{ required: true }]}> 
+                <Input placeholder="09:00-10:30" />
+              </Form.Item>
 
-            <label>
-              Teacher Name
-              <input
-                value={teacherName}
-                onChange={(e) => setTeacherName(e.target.value)}
-                required
-              />
-            </label>
+              <Form.Item label="Teacher Name" name="teacherName" rules={[{ required: true }]}> 
+                <Input placeholder="Ms. Lan" />
+              </Form.Item>
 
-            <label>
-              Max Students
-              <input
-                type="number"
-                min={1}
-                value={maxStudents}
-                onChange={(e) => setMaxStudents(Number(e.target.value))}
-                required
-              />
-            </label>
+              <Form.Item label="Max Students" name="maxStudents" rules={[{ required: true }]}> 
+                <InputNumber min={1} style={{ width: '100%' }} />
+              </Form.Item>
 
-            <button type="submit" disabled={creatingClass}>
-              {creatingClass ? 'Creating...' : 'Create Class'}
-            </button>
-          </form>
+              <Form.Item style={{ marginBottom: 0 }}>
+                <Button type="primary" htmlType="submit" loading={creatingClass}>
+                  Create Class
+                </Button>
+              </Form.Item>
+            </Form>
 
-          <FeedbackMessage feedback={classFeedback} />
-        </div>
+            <FeedbackMessage feedback={classFeedback} />
+          </Card>
+        </Col>
 
-        <RegisterStudentForm
-          students={students}
-          classes={classes}
-          onRegistered={() => void loadData()}
-        />
-      </div>
+        <Col xs={24} lg={12}>
+          <RegisterStudentForm
+            students={students}
+            classes={classes}
+            onRegistered={() => void loadData()}
+          />
+        </Col>
+      </Row>
 
-      <div className="card">
-        <h3>Cancel Registration</h3>
-        <form className="form" onSubmit={handleCancelRegistration}>
-          <label>
-            Registration ID
-            <input
-              type="number"
-              min={1}
-              value={registrationId}
-              onChange={(e) =>
-                setRegistrationId(e.target.value ? Number(e.target.value) : '')
-              }
-              required
-            />
-          </label>
+      <Card title="Cancel Registration" bordered={false}>
+        <Form form={cancelForm} layout="vertical" onFinish={handleCancelRegistration}>
+          <Form.Item
+            label="Registration ID"
+            name="registrationId"
+            rules={[{ required: true }]}
+          >
+            <InputNumber min={1} style={{ width: '100%' }} />
+          </Form.Item>
 
-          <button type="submit" disabled={cancelLoading}>
-            {cancelLoading ? 'Cancelling...' : 'Cancel Registration'}
-          </button>
-        </form>
+          <Form.Item style={{ marginBottom: 0 }}>
+            <Button danger type="primary" htmlType="submit" loading={cancelLoading}>
+              Cancel Registration
+            </Button>
+          </Form.Item>
+        </Form>
 
         <FeedbackMessage feedback={cancelFeedback} />
-      </div>
+      </Card>
 
-      <div className="card">
-        <h3>Weekly Classes View</h3>
-        {loading && <p>Loading...</p>}
-        {error && <p className="feedback error">{error}</p>}
+      <Card
+        bordered={false}
+        title={<Typography.Title level={4} style={{ margin: 0 }}>Weekly Classes View</Typography.Title>}
+      >
+        {loading && <Spin />}
+        {error && <Alert type="error" showIcon message={error} />}
         {!loading && !error && <WeeklyClassesTable classes={classes} />}
-      </div>
-    </section>
+      </Card>
+    </Space>
   );
 }

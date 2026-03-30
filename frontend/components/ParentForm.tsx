@@ -1,6 +1,7 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { useState } from 'react';
+import { Button, Card, Form, Input } from 'antd';
 import { api } from '@/lib/api';
 import { Parent } from '@/lib/types';
 import FeedbackMessage from './FeedbackMessage';
@@ -9,27 +10,28 @@ interface ParentFormProps {
   onCreated?: (parent: Parent) => void;
 }
 
+interface ParentFormValues {
+  name: string;
+  phone: string;
+  email: string;
+}
+
 export default function ParentForm({ onCreated }: ParentFormProps) {
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
+  const [form] = Form.useForm<ParentFormValues>();
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<{
     type: 'success' | 'error';
     text: string;
   } | null>(null);
 
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault();
+  async function handleSubmit(values: ParentFormValues) {
     setLoading(true);
     setFeedback(null);
 
     try {
-      const parent = await api.createParent({ name, phone, email });
+      const parent = await api.createParent(values);
       setFeedback({ type: 'success', text: `Parent ${parent.name} created.` });
-      setName('');
-      setPhone('');
-      setEmail('');
+      form.resetFields();
       onCreated?.(parent);
     } catch (error) {
       setFeedback({
@@ -42,35 +44,32 @@ export default function ParentForm({ onCreated }: ParentFormProps) {
   }
 
   return (
-    <div className="card">
-      <h3>Create Parent</h3>
-      <form onSubmit={handleSubmit} className="form">
-        <label>
-          Name
-          <input value={name} onChange={(e) => setName(e.target.value)} required />
-        </label>
+    <Card title="Create Parent" bordered={false}>
+      <Form layout="vertical" form={form} onFinish={handleSubmit}>
+        <Form.Item label="Name" name="name" rules={[{ required: true }]}>
+          <Input placeholder="Parent name" />
+        </Form.Item>
 
-        <label>
-          Phone
-          <input value={phone} onChange={(e) => setPhone(e.target.value)} required />
-        </label>
+        <Form.Item label="Phone" name="phone" rules={[{ required: true }]}>
+          <Input placeholder="0901234567" />
+        </Form.Item>
 
-        <label>
-          Email
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </label>
+        <Form.Item
+          label="Email"
+          name="email"
+          rules={[{ required: true }, { type: 'email', message: 'Invalid email' }]}
+        >
+          <Input placeholder="parent@example.com" />
+        </Form.Item>
 
-        <button type="submit" disabled={loading}>
-          {loading ? 'Creating...' : 'Create Parent'}
-        </button>
-      </form>
+        <Form.Item style={{ marginBottom: 0 }}>
+          <Button type="primary" htmlType="submit" loading={loading}>
+            Create Parent
+          </Button>
+        </Form.Item>
+      </Form>
 
       <FeedbackMessage feedback={feedback} />
-    </div>
+    </Card>
   );
 }

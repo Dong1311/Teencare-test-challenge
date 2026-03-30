@@ -1,6 +1,7 @@
 'use client';
 
-import { FormEvent, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { Button, Card, Form, Input, Select } from 'antd';
 import { api } from '@/lib/api';
 import { Parent, Student } from '@/lib/types';
 import FeedbackMessage from './FeedbackMessage';
@@ -10,51 +11,42 @@ interface StudentFormProps {
   onCreated?: (student: Student) => void;
 }
 
+interface StudentFormValues {
+  name: string;
+  dob: string;
+  gender: 'MALE' | 'FEMALE' | 'OTHER';
+  currentGrade: string;
+  parentId: number;
+}
+
 export default function StudentForm({ parents, onCreated }: StudentFormProps) {
-  const [name, setName] = useState('');
-  const [dob, setDob] = useState('');
-  const [gender, setGender] = useState('MALE');
-  const [currentGrade, setCurrentGrade] = useState('');
-  const [parentId, setParentId] = useState<number | ''>('');
+  const [form] = Form.useForm<StudentFormValues>();
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<{
     type: 'success' | 'error';
     text: string;
   } | null>(null);
 
-  const isDisabled = useMemo(
-    () => loading || !parentId,
-    [loading, parentId],
+  const parentOptions = useMemo(
+    () =>
+      parents.map((parent) => ({
+        label: `${parent.name} (${parent.email})`,
+        value: parent.id,
+      })),
+    [parents],
   );
 
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault();
-    if (!parentId) {
-      setFeedback({ type: 'error', text: 'Please choose a parent' });
-      return;
-    }
-
+  async function handleSubmit(values: StudentFormValues) {
     setLoading(true);
     setFeedback(null);
 
     try {
-      const student = await api.createStudent({
-        name,
-        dob,
-        gender,
-        currentGrade,
-        parentId: Number(parentId),
-      });
-
+      const student = await api.createStudent(values);
       setFeedback({
         type: 'success',
         text: `Student ${student.name} created.`,
       });
-      setName('');
-      setDob('');
-      setGender('MALE');
-      setCurrentGrade('');
-      setParentId('');
+      form.resetFields();
       onCreated?.(student);
     } catch (error) {
       setFeedback({
@@ -67,60 +59,47 @@ export default function StudentForm({ parents, onCreated }: StudentFormProps) {
   }
 
   return (
-    <div className="card">
-      <h3>Create Student</h3>
-      <form onSubmit={handleSubmit} className="form">
-        <label>
-          Name
-          <input value={name} onChange={(e) => setName(e.target.value)} required />
-        </label>
+    <Card title="Create Student" bordered={false}>
+      <Form
+        layout="vertical"
+        form={form}
+        initialValues={{ gender: 'MALE' }}
+        onFinish={handleSubmit}
+      >
+        <Form.Item label="Name" name="name" rules={[{ required: true }]}>
+          <Input placeholder="Student name" />
+        </Form.Item>
 
-        <label>
-          Date of Birth
-          <input type="date" value={dob} onChange={(e) => setDob(e.target.value)} required />
-        </label>
+        <Form.Item label="Date of Birth" name="dob" rules={[{ required: true }]}>
+          <Input type="date" />
+        </Form.Item>
 
-        <label>
-          Gender
-          <select value={gender} onChange={(e) => setGender(e.target.value)}>
-            <option value="MALE">Male</option>
-            <option value="FEMALE">Female</option>
-            <option value="OTHER">Other</option>
-          </select>
-        </label>
-
-        <label>
-          Current Grade
-          <input
-            value={currentGrade}
-            onChange={(e) => setCurrentGrade(e.target.value)}
-            placeholder="Grade 5"
-            required
+        <Form.Item label="Gender" name="gender" rules={[{ required: true }]}>
+          <Select
+            options={[
+              { label: 'Male', value: 'MALE' },
+              { label: 'Female', value: 'FEMALE' },
+              { label: 'Other', value: 'OTHER' },
+            ]}
           />
-        </label>
+        </Form.Item>
 
-        <label>
-          Parent
-          <select
-            value={parentId}
-            onChange={(e) => setParentId(e.target.value ? Number(e.target.value) : '')}
-            required
-          >
-            <option value="">Select parent</option>
-            {parents.map((parent) => (
-              <option key={parent.id} value={parent.id}>
-                {parent.name} ({parent.email})
-              </option>
-            ))}
-          </select>
-        </label>
+        <Form.Item label="Current Grade" name="currentGrade" rules={[{ required: true }]}>
+          <Input placeholder="Grade 5" />
+        </Form.Item>
 
-        <button type="submit" disabled={isDisabled}>
-          {loading ? 'Creating...' : 'Create Student'}
-        </button>
-      </form>
+        <Form.Item label="Parent" name="parentId" rules={[{ required: true }]}>
+          <Select placeholder="Select parent" options={parentOptions} />
+        </Form.Item>
+
+        <Form.Item style={{ marginBottom: 0 }}>
+          <Button type="primary" htmlType="submit" loading={loading}>
+            Create Student
+          </Button>
+        </Form.Item>
+      </Form>
 
       <FeedbackMessage feedback={feedback} />
-    </div>
+    </Card>
   );
 }
