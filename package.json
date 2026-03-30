@@ -1,0 +1,9 @@
+{
+  "name": "teencare-workspace",
+  "private": true,
+  "scripts": {
+    "rundev": "npm --prefix backend run rundev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev": "npm run rundev"
+  }
+}

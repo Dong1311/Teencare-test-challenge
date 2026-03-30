@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { DayOfWeek, Gender, PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
